@@ -51,12 +51,10 @@ async def add_expense(date, amount, category, subcategory="", note=""):
             expense_id = cur.lastrowid
             await c.commit()  # Explicit commit
             return {"status": "success", "id": expense_id, "message": "Expense added successfully"}
-    except aiosqlite.OperationalError as e:
+    except Exception as e:  # Changed: simplified exception handling
         if "readonly" in str(e).lower():
             return {"status": "error", "message": "Database is in read-only mode. Check file permissions."}
         return {"status": "error", "message": f"Database error: {str(e)}"}
-    except Exception as e:
-        return {"status": "error", "message": f"Unexpected error: {str(e)}"}
     
 @mcp.tool()
 async def list_expenses(start_date, end_date):
@@ -73,7 +71,7 @@ async def list_expenses(start_date, end_date):
                 (start_date, end_date)
             )
             cols = [d[0] for d in cur.description]
-            return [dict(zip(cols, r)) for r in cur.fetchall()]
+            return [dict(zip(cols, r)) for r in await cur.fetchall()]
     except Exception as e:
         return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
 
@@ -99,7 +97,7 @@ async def summarize(start_date, end_date, category=None):
         return {"status": "error", "message": f"Error summarizing expenses: {str(e)}"}
 
 
-@mcp.resource("expense://categories", mime_type="application/json")
+@mcp.resource("expense:///categories", mime_type="application/json")
 async def categories():
     # Read fresh each time so you can edit the file without restarting
     try:
